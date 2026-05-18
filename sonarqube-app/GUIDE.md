@@ -18,17 +18,25 @@
 
 ## TASK 1 — Cài SonarQube Server (15 điểm)
 
-### Bước 1.1 — Khởi động SonarQube bằng Docker
+### Bước 1.1 — Khởi động SonarQube bằng Docker Compose
+
+File `docker-compose.yml` đã có sẵn ở thư mục gốc (`Sonarqube/`), chạy từ **WSL terminal**:
 
 ```bash
-docker run -d --name sonarqube \
-  -p 9000:9000 \
-  -v sonarqube_data:/opt/sonarqube/data \
-  sonarqube:2026.1-community
+# Từ thư mục gốc Sonarqube/
+docker compose up -d sonarqube-db sonarqube
 ```
 
-> ⏳ Chờ **1–2 phút** để SonarQube khởi động xong.  
-> Kiểm tra: `docker logs -f sonarqube` — chờ đến khi thấy `SonarQube is operational`
+> ⏳ Chờ **1–2 phút** để SonarQube khởi động xong.
+
+Kiểm tra logs:
+
+```bash
+docker logs -f sonarqube
+# Chờ đến khi thấy: "SonarQube is operational"
+```
+
+> ⚠️ **Lưu ý WSL:** Tất cả lệnh `docker` phải chạy trong **WSL Debian terminal**, không phải PowerShell.
 
 ### Bước 1.2 — Đổi mật khẩu admin
 
@@ -126,21 +134,24 @@ sonar.qualitygate.wait=true
 
 ### Bước 2.5 — Chạy SonarQube scan local (manual)
 
+Chạy từ **WSL terminal**, trong thư mục `sonarqube-app/`:
+
 ```bash
-# Chạy từ thư mục sonarqube-app/
+# SonarQube chạy qua docker compose → dùng tên service làm host
 docker run --rm \
-  -e SONAR_HOST_URL="http://host.docker.internal:9000" \
+  --network sonarqube_default \
+  -e SONAR_HOST_URL="http://sonarqube:9000" \
   -e SONAR_TOKEN="<token-của-bạn>" \
   -v "$(pwd):/usr/src" \
   sonarsource/sonar-scanner-cli
 ```
 
-> **Windows PowerShell** — thay `$(pwd)` bằng `${PWD}`:
-> ```powershell
-> docker run --rm `
->   -e SONAR_HOST_URL="http://host.docker.internal:9000" `
->   -e SONAR_TOKEN="<token-của-bạn>" `
->   -v "${PWD}:/usr/src" `
+> **Nếu không dùng network compose** (chạy SonarQube riêng lẻ):
+> ```bash
+> docker run --rm \
+>   -e SONAR_HOST_URL="http://172.17.0.1:9000" \
+>   -e SONAR_TOKEN="<token-của-bạn>" \
+>   -v "$(pwd):/usr/src" \
 >   sonarsource/sonar-scanner-cli
 > ```
 
@@ -334,8 +345,11 @@ git push origin main
 
 | Vấn đề | Nguyên nhân | Giải pháp |
 |--------|-------------|-----------|
+| `docker` not found trong PowerShell | Docker cài trong WSL, không phải Windows | Chạy tất cả lệnh docker trong **WSL terminal** |
 | SonarQube chưa khởi động | Container còn đang start | Chờ thêm, check `docker logs sonarqube` |
-| Runner offline | Service chưa chạy | Vào `runner/` → chạy lại runner |
+| Image `2026.1-community` not found | Tag không tồn tại trên Docker Hub | Dùng `sonarqube:community` (trong docker-compose.yml) |
+| Runner offline | Service chưa chạy | Trong WSL: `cd runner && docker compose up -d` |
 | Quality gate timeout | `sonar.qualitygate.wait=true` chờ lâu | Tăng `timeout-minutes: 5` trong workflow |
 | Coverage < 80% | Tests chưa đủ | Thêm test cases hoặc kiểm tra `pytest --cov` |
-| `host.docker.internal` không resolve | Docker Desktop chưa bật | Settings → Resources → Enable host networking |
+| Scanner không kết nối SonarQube | Network mismatch | Dùng `--network sonarqube_default` khi scan local |
+| PostgreSQL không healthy | Volume cũ bị corrupt | `docker compose down -v` rồi `up` lại |
