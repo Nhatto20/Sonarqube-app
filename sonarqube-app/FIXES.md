@@ -1,25 +1,30 @@
 # Code Issue Fixes — Task 4 Documentation
 
-Tài liệu này ghi lại **7 issues** được SonarQube phát hiện và cách sửa từng issue (before → after).
+Tài liệu này ghi lại **7 issues** (Bugs, Vulnerabilities, Code Smells) được cố tình đưa vào source code để SonarQube phân tích, và cách fix chúng để vượt qua Quality Gate.
+
+Tất cả thay đổi đều nằm trong file `src/data_processor.py`.
 
 ---
 
-## Issue 1 — Bug: Possible `NoneType` error
+## 1. Issue 1 — Bug: `NoneType` dereference (Crash)
 
-| | Code |
-|---|---|
-| **Before** | `result = data.split(",")` — không kiểm tra `data is None` |
-| **After** | Guard clause: `if data is None: raise ValueError(...)` |
-| **Severity** | 🔴 Bug |
-| **Rule** | `python:S2259` — Null dereference |
+Khi `data` truyền vào là `None`, lệnh `data.split(",")` sẽ gây crash ứng dụng (`AttributeError: 'NoneType' object has no attribute 'split'`).
 
+| Item | Details |
+|------|---------|
+| **Severity** | 🔴 Critical / Bug |
+| **Before** | Không kiểm tra `data` trước khi xử lý |
+| **After** | Thêm "Guard clause" kiểm tra kiểu dữ liệu và raise exception rõ ràng |
+
+**Before:**
 ```python
-# BEFORE
 def process_data(data):
-    result = data.split(",")   # crash if data is None
+    result = data.split(",")
     return result
+```
 
-# AFTER
+**After:**
+```python
 def process_data(data: str) -> list[str]:
     if data is None:
         raise ValueError("data must not be None")
@@ -30,20 +35,25 @@ def process_data(data: str) -> list[str]:
 
 ---
 
-## Issue 2 — Vulnerability: Hardcoded password
+## 2. Issue 2 — Vulnerability: Hardcoded Password
 
-| | Code |
-|---|---|
-| **Before** | `password = "admin123"` — hardcoded credential trong source code |
-| **After** | Đọc từ environment variable `DB_PASSWORD` |
-| **Severity** | 🔴 Vulnerability |
-| **Rule** | `python:S2068` — Credentials should not be hard-coded |
+Lưu trữ mật khẩu dạng plain text trực tiếp trong source code là lỗ hổng bảo mật nghiêm trọng (Hardcoded credentials).
 
+| Item | Details |
+|------|---------|
+| **Severity** | 🔴 Critical / Vulnerability |
+| **Before** | `password = "admin123"` |
+| **After** | Lấy password từ biến môi trường (Environment Variable) |
+
+**Before:**
 ```python
-# BEFORE
-password = "admin123"
+def get_db_password():
+    password = "admin123"
+    return password
+```
 
-# AFTER
+**After:**
+```python
 def get_db_password() -> str:
     password = os.environ.get("DB_PASSWORD")
     if not password:
@@ -53,48 +63,59 @@ def get_db_password() -> str:
 
 ---
 
-## Issue 3 — Code Smell: Bare `except` clause
+## 3. Issue 3 — Code Smell: Bare `except` clause
 
-| | Code |
-|---|---|
-| **Before** | `except: pass` — bắt mọi exception kể cả `SystemExit` |
-| **After** | `except Exception as exc:` với logging |
-| **Severity** | 🟡 Code Smell |
-| **Rule** | `python:S5754` — Bare except |
+Bắt lỗi bằng `except:` (không chỉ định loại Exception) sẽ bắt toàn bộ các lỗi kể cả lỗi hệ thống (`SystemExit`, `KeyboardInterrupt`), làm ứng dụng khó debug.
 
+| Item | Details |
+|------|---------|
+| **Severity** | 🟡 Major / Code Smell |
+| **Before** | Dùng `except:` và `pass` |
+| **After** | Bắt cụ thể `Exception` và có ghi log |
+
+**Before:**
 ```python
-# BEFORE
-try:
-    risky_operation()
-except:
-    pass
+def safe_risky_call():
+    try:
+        risky_operation()
+        return True
+    except:
+        pass
+```
 
-# AFTER
-try:
-    risky_operation()
-    return True
-except Exception as exc:
-    logger.warning("risky_operation failed: %s", exc)
-    return False
+**After:**
+```python
+def safe_risky_call() -> bool:
+    try:
+        risky_operation()
+        return True
+    except Exception as exc:
+        logger.warning("risky_operation failed: %s", exc)
+        return False
 ```
 
 ---
 
-## Issue 4 — Bug: Inconsistent return type (implicit `None`)
+## 4. Issue 4 — Bug: Implicit `None` return
 
-| | Code |
-|---|---|
-| **Before** | `calculate_hash` không raise khi `value` rỗng → trả về empty digest |
-| **After** | Raise `ValueError` rõ ràng khi input rỗng |
-| **Severity** | 🔴 Bug |
-| **Rule** | `python:S1168` — Return empty collection instead of null |
+Hàm đôi khi không trả về giá trị (implicit return None) dẫn đến caller bị lỗi không lường trước được.
 
+| Item | Details |
+|------|---------|
+| **Severity** | 🔴 Major / Bug |
+| **Before** | Trả về hash nếu input tồn tại, nếu input rỗng thì hàm lẳng lặng trả về None |
+| **After** | Bắt buộc input hợp lệ, nếu rỗng thì raise exception |
+
+**Before:**
 ```python
-# BEFORE
 def calculate_hash(value):
-    return hashlib.sha256(value.encode()).hexdigest()  # empty string → weak
+    if value:
+        return hashlib.sha256(value.encode()).hexdigest()
+    # Implicit return None
+```
 
-# AFTER
+**After:**
+```python
 def calculate_hash(value: str) -> str:
     if not value:
         raise ValueError("value must not be empty")
@@ -103,24 +124,27 @@ def calculate_hash(value: str) -> str:
 
 ---
 
-## Issue 5 — Code Smell: Duplicated logic
+## 5. Issue 5 — Code Smell: Duplicated Logic
 
-| | Code |
-|---|---|
-| **Before** | `normalize_username` và `normalize_email` đều lặp lại `.strip().lower()` |
-| **After** | Refactor thành hàm helper `_normalize()` dùng chung |
-| **Severity** | 🟡 Code Smell |
-| **Rule** | `python:S4144` — Methods should not have identical implementations |
+Logic chuẩn hóa (strip whitespace + lower case) bị lặp lại ở nhiều nơi.
 
+| Item | Details |
+|------|---------|
+| **Severity** | 🟡 Minor / Code Smell |
+| **Before** | `normalize_username` và `normalize_email` đều gọi `.strip().lower()` |
+| **After** | Trích xuất thành private helper function `_normalize()` |
+
+**Before:**
 ```python
-# BEFORE
 def normalize_username(username):
     return username.strip().lower()
 
 def normalize_email(email):
     return email.strip().lower()
+```
 
-# AFTER
+**After:**
+```python
 def _normalize(text: str) -> str:
     return text.strip().lower()
 
@@ -133,36 +157,42 @@ def normalize_email(email: str) -> str:
 
 ---
 
-## Issue 6 — Code Smell: Missing type annotations
+## 6. Issue 6 & 7 — Code Smell: Missing Types & Docstrings
 
-| | Code |
-|---|---|
-| **Before** | Không có type hints trên bất kỳ hàm nào |
-| **After** | Đầy đủ type hints trên tất cả functions (`str`, `list[str]`, `bool`, etc.) |
-| **Severity** | 🟡 Code Smell |
-| **Rule** | `python:S5886` — Type annotations improve readability |
+Không có định nghĩa kiểu dữ liệu tĩnh và không có chú thích giải thích cho các function.
+
+| Item | Details |
+|------|---------|
+| **Severity** | 🟡 Minor - Info / Code Smell |
+| **Before** | `def process_data(data):` |
+| **After** | Thêm Type Hint `-> list[str]:` và Google-style docstrings |
+
+**After:**
+```python
+def process_data(data: str) -> list[str]:
+    """Split a CSV string into a list of trimmed values.
+
+    Args:
+        data: Comma-separated string. Must not be None.
+
+    Returns:
+        List of stripped string tokens.
+
+    Raises:
+        ValueError: If *data* is None or not a string.
+    """
+```
 
 ---
 
-## Issue 7 — Code Smell: Missing docstrings
+## Bảng tổng kết Task 4
 
-| | Code |
-|---|---|
-| **Before** | Không có docstring cho module hay functions |
-| **After** | Docstring đầy đủ (Args, Returns, Raises) theo Google style |
-| **Severity** | 🟡 Code Smell |
-| **Rule** | `python:S1602` — Missing docstrings |
-
----
-
-## Tổng kết
-
-| # | Loại | Rule | Severity | Trạng thái |
-|---|------|------|----------|------------|
-| 1 | Bug | `S2259` NullType dereference | 🔴 Critical | ✅ Fixed |
-| 2 | Vulnerability | `S2068` Hardcoded credentials | 🔴 Critical | ✅ Fixed |
-| 3 | Code Smell | `S5754` Bare except | 🟡 Major | ✅ Fixed |
-| 4 | Bug | `S1168` Implicit None return | 🔴 Major | ✅ Fixed |
-| 5 | Code Smell | `S4144` Duplicated logic | 🟡 Minor | ✅ Fixed |
-| 6 | Code Smell | `S5886` Missing type hints | 🟡 Minor | ✅ Fixed |
-| 7 | Code Smell | `S1602` Missing docstrings | 🟡 Info | ✅ Fixed |
+| Loại Issue | Vấn đề | Đã Fix | Severity |
+|---|---|---|---|
+| 🐛 Bug | NoneType dereference | Guard clause `if is None` | 🔴 Critical |
+| 🔒 Vulnerability | Hardcoded password | Thay bằng `os.environ.get` | 🔴 Critical |
+| 🌀 Code Smell | Bare except `except:` | Thay bằng `except Exception` | 🟡 Major |
+| 🐛 Bug | Implicit `None` return | Raise `ValueError` nếu input rỗng | 🔴 Major |
+| 🌀 Code Smell | Logic bị lặp lại | Gom vào helper `_normalize` | 🟡 Minor |
+| 🌀 Code Smell | Thiếu Type Hint | Thêm đầy đủ type annotation | 🟡 Minor |
+| 🌀 Code Smell | Thiếu Docstring | Thêm Google-style docstring | 🟡 Info |
