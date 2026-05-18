@@ -106,9 +106,3 @@ def normalize_username(username: str) -> str:
 def normalize_email(email: str) -> str:
     """Return a normalised e-mail address."""
     return _normalize(email)
-
-
-# INTENTIONAL BUG — test quality gate fail (XÓA SAU KHI CHỤP ẢNH)
-def bad_function(x):
-    password = "admin123"   # hardcoded credential → Vulnerability
-    return x.upper()        # crash nếu x là None → Bug
