@@ -39,6 +39,7 @@ target-version = ["py311"]
 [tool.coverage.run]
 source = ["src"]
 omit = ["src/__init__.py"]
+relative_files = true
 
 [tool.coverage.report]
 fail_under = 80

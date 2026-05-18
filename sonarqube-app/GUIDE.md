@@ -97,19 +97,30 @@ cd Sonarqube-app/sonarqube-app
 
 ### Bước 2.2 — Tạo môi trường Python & cài dependencies
 
+> ⚠️ **Phải `cd` vào thư mục `sonarqube-app/` trước** — `pyproject.toml` nằm ở đây, không phải thư mục gốc.
+
 ```bash
+# WSL terminal
+cd /mnt/c/Users/japan/Workspaces/FPT-fsa/Docker/Sonarqube/sonarqube-app
+
 # Tạo virtual environment
-python -m venv .venv
+python3 -m venv .venv
 
-# Kích hoạt (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
-
-# Kích hoạt (Windows CMD)
-.\.venv\Scripts\activate.bat
+# Kích hoạt (WSL/Linux)
+source .venv/bin/activate
 
 # Cài dependencies (bao gồm dev tools: pytest, ruff, black)
+cd sonarqube-app
 pip install -e ".[dev]"
 ```
+
+> **Windows PowerShell** (nếu không dùng WSL):
+> ```powershell
+> cd sonarqube-app
+> python -m venv .venv
+> .\.venv\Scripts\Activate.ps1
+> pip install -e ".[dev]"
+> ```
 
 ### Bước 2.3 — Chạy tests và tạo coverage report
 
