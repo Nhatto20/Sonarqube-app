@@ -10,7 +10,7 @@ from .data_processor import (
     safe_risky_call,
 )
 
-app = FastAPI(title="SonarQube Demo App", version="1.0.0")
+app = FastAPI(title="SonarQube Demo App:", version="1.0.0")
 
 
 @app.get("/health")
