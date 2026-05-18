@@ -63,14 +63,24 @@ Vào `https://github.com/Nhatto20/Sonarqube-app` → **Settings → Secrets and 
 | Secret name | Giá trị |
 |-------------|---------|
 | `SONAR_TOKEN` | Token vừa copy (`sqp_xxxx...`) |
-| `SONAR_HOST_URL` | `http://<IP-máy-bạn>:9000` *(xem bước dưới)* |
+| `SONAR_HOST_URL` | `http://host.docker.internal:9000` |
 
-> **Lấy IP máy (Windows):**
-> ```powershell
-> ipconfig | findstr "IPv4"
-> # Ví dụ: 192.168.1.10 → SONAR_HOST_URL = http://192.168.1.10:9000
+> **⚠️ Tại sao phải dùng `host.docker.internal`?**
+>
+> Kiến trúc thực tế trên máy:
 > ```
-> ⚠️ **Không dùng `localhost`** — self-hosted runner chạy trong container, phải dùng IP LAN thật.
+> WSL2 / Docker Host
+> ├── [Container] github-runner   ← chạy CI job
+> ├── [Container] sq_server       ← SonarQube :9000
+> └── [Container] sq_db           ← PostgreSQL
+> ```
+>
+> | Ngữ cảnh | `localhost` trỏ vào | Cần dùng |
+> |----------|--------------------|---------|
+> | WSL terminal / browser | Docker host ✅ | `localhost:9000` |
+> | **Bên trong runner container** | Loopback của container ❌ | **`host.docker.internal:9000`** |
+>
+> Runner container đã khai báo `extra_hosts: host.docker.internal:host-gateway` → có thể resolve đúng.
 
 📸 **Screenshot 1:** SonarQube dashboard sau khi tạo project (tab Projects).
 

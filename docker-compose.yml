@@ -4,7 +4,7 @@ services:
     build:
       context: ./sonarqube-app
       dockerfile: Dockerfile
-    container_name: sonarqube_app
+    container_name: sq_app
     ports:
       - "8080:8000"
     environment:
@@ -23,7 +23,7 @@ services:
   # ── SonarQube Database (PostgreSQL) ─────────────────────────────────────────
   sonarqube-db:
     image: postgres:16-alpine
-    container_name: sonarqube-db
+    container_name: sq_db
     environment:
       POSTGRES_USER: sonar
       POSTGRES_PASSWORD: sonar
@@ -39,7 +39,7 @@ services:
   # ── SonarQube Server ─────────────────────────────────────────────────────────
   sonarqube:
     image: sonarqube:community
-    container_name: sonarqube
+    container_name: sq_server
     depends_on:
       sonarqube-db:
         condition: service_healthy
