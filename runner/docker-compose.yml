@@ -1,0 +1,16 @@
+services:
+  runner:
+    # No 'platform' override — let Docker pick the host's native arch (linux/amd64 on WSL/x86_64)
+    build: .
+    image: my-github-runner
+    env_file: ../.env           # Reads GITHUB_TOKEN and REPO_URL from .env
+    environment:
+      RUNNER_NAME: my-docker-runner
+      RUNNER_LABELS: self-hosted,docker,linux
+    volumes:
+      # Mount the host Docker socket so the runner can run 'docker build/push' commands
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped  # Auto-restart if it crashes
+
