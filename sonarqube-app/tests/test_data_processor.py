@@ -1,6 +1,5 @@
 """Unit tests for data_processor.py — ensures ≥80 % coverage for quality gate."""
 
-import os
 import pytest
 
 from src.data_processor import (

@@ -1,8 +1,8 @@
 """Tests for the FastAPI application endpoints."""
 
-import pytest
 from fastapi.testclient import TestClient
 
+# pyrefly: ignore [missing-import]
 from src.app import app
 
 client = TestClient(app)
