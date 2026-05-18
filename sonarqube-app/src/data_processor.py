@@ -106,5 +106,3 @@ def normalize_username(username: str) -> str:
 def normalize_email(email: str) -> str:
     """Return a normalised e-mail address."""
     return _normalize(email)
-
-print('ff')
