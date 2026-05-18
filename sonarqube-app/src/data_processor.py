@@ -108,7 +108,22 @@ def normalize_email(email: str) -> str:
     return _normalize(email)
 
 
-# INTENTIONAL BUG — test quality gate fail (XÓA SAU KHI CHỤP ẢNH)
-def bad_function(x):
-    password = "admin123"   # hardcoded credential → Vulnerability
-    return x.upper()        # crash nếu x là None → Bug
+# ── INTENTIONAL ISSUES — để SonarQube bắt (ruff/black/pylint bỏ qua) ──────────
+# Issue A (Vulnerability — sqli): SQL query built by string concatenation
+# → SonarQube rule: python:S3649 (Database queries should not be vulnerable to injection attacks)
+# → ruff: KHÔNG bắt (không có data-flow / taint analysis)
+def get_user(username: str, db_cursor) -> list:
+    """Fetch user record — intentionally vulnerable to SQL injection."""
+    query = "SELECT * FROM users WHERE name = '" + username + "'"  # noqa: S608
+    db_cursor.execute(query)
+    return db_cursor.fetchall()
+
+
+# Issue B (Security Hotspot — hardcoded IP):
+# → SonarQube rule: python:S1313 (Using hardcoded IP addresses is security-sensitive)
+# → ruff: KHÔNG bắt theo mặc định (chỉ bắt nếu bật rule S104, không phải S1313)
+def connect_to_server() -> str:
+    """Return internal server endpoint — hardcoded IP is a security hotspot."""
+    server_ip = "192.168.1.100"  # hardcoded private IP
+    port = 8080
+    return f"http://{server_ip}:{port}/api"
